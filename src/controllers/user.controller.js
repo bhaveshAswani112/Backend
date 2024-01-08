@@ -173,6 +173,8 @@ const logoutUser = asyncHandler(async (req,res) => {
     res.status(200).clearCookie("accessToken",options).clearCookie("refreshToken",options).json(new ApiResponse(200,{},"User logged out successfully"))
 })
 
+
+
 const refreshAccessToken = asyncHandler(async (req,res) => {
     try {
         const incomingRefreshToken = req.cookies?.refreshToken || req.body.refreshToken
@@ -207,9 +209,145 @@ const refreshAccessToken = asyncHandler(async (req,res) => {
     }
 })
 
+const changeCurrentPassword = asyncHandler(async (req,res) =>{
+    // take current password and new password from user
+    // check the current password from the password saved in database
+    // save new password in database
+    const {oldPassword , newPassword} = req.body
+    const id = req.user?._id
+    const user = await User.findById(id)
+    if(!user){
+        throw new ApiError(400,"User not autheticated")
+    }
+    const check = await user.isPasswordCorrect(oldPassword)
+    if(!check){
+        throw new ApiError(400,"Invalid old password")
+    }
+    user.password = newPassword
+    await user.save({validateBeforeSave : false})
+    return res.status(200).json(
+        new ApiResponse(200,{},"Password changed successfully")
+    )
+
+})
+
+const getCurrentUser = asyncHandler(async (req,res) => {
+    return res.status(200).json(
+        new ApiResponse(200,req.user,"Current user fetched successfully")
+    )
+})
+
+const updateDetails = asyncHandler(async (req,res) => {
+    const {fullName,email} = req.body
+    if(!fullName || !email){
+        throw new ApiError(400,"No field to update")
+    }
+    // const user = req.user?.id
+    // if(fullName){
+    //     user.fullName = fullName
+    // }
+    // if(email){
+    //     user.email = email
+    // }
+    // await user.save({validateBeforeSave:false})
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName: fullName ? fullName : req.user.fullName,
+                email: email ? email : req.user.email
+            }
+        },
+        {new : true}
+    ).select("-password")
+
+    return res.
+    status(200).
+    json(
+        new ApiResponse(200,{user},"Details updated successfully")
+    )
+})
+
+const updateAvatar = asyncHandler(async (req,res) => {
+    const id = req?.user._id
+    let path = undefined
+    if(req.file?.path){
+        path = req.file?.path
+    }
+    if(!path){
+        throw new ApiError(400,"Required avatar")
+    }
+    const avatar = await uploadOnCloudinary(path)
+    if(!avatar?.url){
+        throw new ApiError(400,"Error while uploading avatar on cloudinary")
+    }
+    const user = await User.findByIdAndUpdate(
+        id,
+        {
+            $set : {
+                avatar : avatar.url
+            }
+        },
+        {
+            new : true
+        }
+    ).select(
+        "-password "
+    )
+
+    return res.status(200).json(
+        new ApiResponse(200,{
+            user
+        },"Avatar updated successfully")
+    )
+
+
+})
+const updateCoverImage = asyncHandler(async (req,res) => {
+    const id = req?.user._id
+    let path = undefined
+    if(req.file?.path){
+        path = req.file?.path
+    }
+    if(!path){
+        throw new ApiError(400,"Required cover image")
+    }
+    const cover = await uploadOnCloudinary(path)
+    if(!cover?.url){
+        throw new ApiError(400,"Error while uploading cover image on cloudinary")
+    }
+    const user = await User.findByIdAndUpdate(
+        id,
+        {
+            $set : {
+                coverImage : cover.url
+            }
+        },
+        {
+            new : true
+        }
+    ).select(
+        "-password"
+    )
+
+    return res.status(200).json(
+        new ApiResponse(200,{
+            user
+        },"Cover image updated successfully")
+    )
+
+
+})
+
 export {
     registerUser,
     loginUser,
-    logoutUser,
-    refreshAccessToken
+    logoutUser, // auth
+    refreshAccessToken, 
+    changeCurrentPassword, // auth
+    getCurrentUser, // auth
+    updateDetails ,// auth
+    updateAvatar, // multer , auth
+    updateCoverImage, // multer , auth
+
 }
