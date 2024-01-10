@@ -240,7 +240,7 @@ const getCurrentUser = asyncHandler(async (req,res) => {
 
 const updateDetails = asyncHandler(async (req,res) => {
     const {fullName,email} = req.body
-    if(!fullName || !email){
+    if(!fullName && !email){
         throw new ApiError(400,"No field to update")
     }
     // const user = req.user?.id
@@ -380,7 +380,7 @@ const getUserProfile = asyncHandler(async (req,res) => {
 
                     isSubscribed : {
                         $cond : {
-                            $if : {$in : [req.user?._id , "$subscribers.subscriber"]},
+                            if : {$in : [req.user?._id , "$subscribers.subscriber"]},
                             then : true,
                             else : false
                         }
@@ -393,7 +393,7 @@ const getUserProfile = asyncHandler(async (req,res) => {
                 $project : {
                     fullName : 1,
                     username : 1,
-                    subscribedToCount : 1,
+                    subscribersCount : 1,
                     channelsubscribedToCount : 1,
                     isSubscribed : 1,
                     avatar : 1,
@@ -403,10 +403,11 @@ const getUserProfile = asyncHandler(async (req,res) => {
             }
         ]
     )
+    console.log(channel)
     if(!channel?.length){
         throw new ApiError(404,"Channel does not exist")
     }
-    console.log(channel)
+    
     return res.status(200).json(
         new ApiResponse(200,channel[0],"User channel fetched successfully")
     )
