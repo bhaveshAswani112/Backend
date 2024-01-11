@@ -11,7 +11,7 @@ app.use(cors({
 app.use(express.json({    // ==> Configuration to allow json files but in a limit
     limit : "16kb"
 }))
-app.use(express.urlencoded({    // ==> Configuration to encode url eg some sites convert space to + and some to %20
+app.use(urlencoded({    // ==> Configuration to encode url eg some sites convert space to + and some to %20
     extended : true,
     limit : "16kb"
 }))
