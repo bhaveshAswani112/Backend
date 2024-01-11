@@ -7,7 +7,8 @@ import {registerUser,
     getCurrentUser,
     getUserProfile,
     getWatchHistory,
-    updateAvatar,updateCoverImage,
+    updateAvatar,
+    updateCoverImage,
     updateDetails
 } from "../controllers/user.controller.js"
 import { upload } from "../middlewares/multer.middleware.js";

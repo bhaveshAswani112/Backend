@@ -1,12 +1,13 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
 import {User} from "../models/user.models.js"
-import { uploadOnCloudinary } from "../utils/Cloudinary.js";
+import { uploadOnCloudinary ,deleteFromCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/APiResponse.js";
 import fs from "fs"
 import jwt from "jsonwebtoken"
-import { threadId } from "worker_threads";
 import mongoose from "mongoose";
+
+
 const generateAccesAndRefreshToken = async (userId) => {
     const user = await User.findById(userId)
     const accessToken = await user.generateAccessToken()
@@ -278,6 +279,10 @@ const updateAvatar = asyncHandler(async (req,res) => {
     if(!path){
         throw new ApiError(400,"Required avatar")
     }
+    const idx = req?.user?.avatar.split("/").pop().lastIndexOf('.')
+    const public_id = req?.user?.avatar.split("/").pop().slice(0,idx)
+
+
     const avatar = await uploadOnCloudinary(path)
     if(!avatar?.url){
         throw new ApiError(400,"Error while uploading avatar on cloudinary")
@@ -295,6 +300,9 @@ const updateAvatar = asyncHandler(async (req,res) => {
     ).select(
         "-password "
     )
+    console.log(public_id)
+    const delResponse = await deleteFromCloudinary(public_id)
+    // console.log(delResponse)
 
     return res.status(200).json(
         new ApiResponse(200,{
@@ -313,6 +321,12 @@ const updateCoverImage = asyncHandler(async (req,res) => {
     if(!path){
         throw new ApiError(400,"Required cover image")
     }
+    const idx = req?.user?.avatar.split("/").pop().lastIndexOf('.')
+    if(idx){
+        const public_id = req?.user?.avatar.split("/").pop().slice(0,idx)
+        const delResponse = await deleteFromCloudinary(public_id)
+    }
+    
     const cover = await uploadOnCloudinary(path)
     if(!cover?.url){
         throw new ApiError(400,"Error while uploading cover image on cloudinary")
@@ -476,5 +490,4 @@ export {
     updateCoverImage, // multer , auth
     getUserProfile,
     getWatchHistory // auth
-
 }
