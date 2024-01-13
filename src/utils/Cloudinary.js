@@ -23,8 +23,11 @@ const uploadOnCloudinary = async (filePath) => {
     
 }
 
-const deleteFromCloudinary = async(public_id) => {
+const deleteFromCloudinary = async(public_url) => {
     try {
+        if(!public_url)return null
+        const idx = public_url.split("/").pop().lastIndexOf('.')
+        const public_id = public_url.split("/").pop().slice(0,idx)
         if(!public_id)return null
         const resp = await cloudinary.uploader.destroy(public_id)
         return resp

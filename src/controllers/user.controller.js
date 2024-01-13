@@ -1,10 +1,10 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {ApiError} from "../utils/ApiError.js"
-import {User} from "../models/user.models.js"
-import { uploadOnCloudinary ,deleteFromCloudinary } from "../utils/Cloudinary.js";
-import { ApiResponse } from "../utils/APiResponse.js";
-import fs from "fs"
-import jwt from "jsonwebtoken"
+import {ApiError} from "../utils/ApiError.js";
+import {User} from "../models/user.model.js";
+import { uploadOnCloudinary , deleteFromCloudinary } from "../utils/cloudinary.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import fs from "fs";
+import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 
@@ -63,9 +63,6 @@ const registerUser = asyncHandler(async (req,res)=>{
     }
     
     if(!avatar_local_path){
-        if(req.files.avatar && req.files.avatar.length > 0){
-            fs.unlinkSync(req.files.avatar[0].path)
-        }
         if(req.files.coverImage && req.files.coverImage.length > 0){
             fs.unlinkSync(req.files.coverImage[0].path)
         }
@@ -97,7 +94,7 @@ const registerUser = asyncHandler(async (req,res)=>{
     )
     if(!createdUser)throw new ApiError(500,"Error while registering the user")
 
-    return res.status(201).json(
+    return res.status(200).json(
         new ApiResponse(200,createdUser,"User Registerd Successfully")
     )
 
@@ -156,12 +153,12 @@ const loginUser = asyncHandler(async (req,res) => {
 })
 
 const logoutUser = asyncHandler(async (req,res) => {
-    const user_id = req.user._id
+    const user_id = req?.user?._id
     await User.findByIdAndUpdate(
         user_id,
         {
             $unset : {
-                refreshToken : 1
+                refreshToken : undefined
             }
         },
         {
@@ -252,7 +249,7 @@ const updateDetails = asyncHandler(async (req,res) => {
     //     user.email = email
     // }
     // await user.save({validateBeforeSave:false})
-    const user = await User.findByIdAndUpdate(
+    let user = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
@@ -261,8 +258,8 @@ const updateDetails = asyncHandler(async (req,res) => {
             }
         },
         {new : true}
-    ).select("-password")
-
+    )
+    user = await User.findById(req.user?._id).select("-password")
     return res.
     status(200).
     json(
@@ -279,15 +276,13 @@ const updateAvatar = asyncHandler(async (req,res) => {
     if(!path){
         throw new ApiError(400,"Required avatar")
     }
-    const idx = req?.user?.avatar.split("/").pop().lastIndexOf('.')
-    const public_id = req?.user?.avatar.split("/").pop().slice(0,idx)
 
-
+    let public_url = req.user?.avatar
     const avatar = await uploadOnCloudinary(path)
     if(!avatar?.url){
         throw new ApiError(400,"Error while uploading avatar on cloudinary")
     }
-    const user = await User.findByIdAndUpdate(
+    let user = await User.findByIdAndUpdate(
         id,
         {
             $set : {
@@ -297,11 +292,10 @@ const updateAvatar = asyncHandler(async (req,res) => {
         {
             new : true
         }
-    ).select(
-        "-password "
     )
-    console.log(public_id)
-    const delResponse = await deleteFromCloudinary(public_id)
+    user = await User.findById(req.user?._id).select("-password")
+    // console.log(public_url)
+    const delResponse = await deleteFromCloudinary(public_url)
     // console.log(delResponse)
 
     return res.status(200).json(
@@ -321,17 +315,12 @@ const updateCoverImage = asyncHandler(async (req,res) => {
     if(!path){
         throw new ApiError(400,"Required cover image")
     }
-    const idx = req?.user?.avatar.split("/").pop().lastIndexOf('.')
-    if(idx){
-        const public_id = req?.user?.avatar.split("/").pop().slice(0,idx)
-        const delResponse = await deleteFromCloudinary(public_id)
-    }
-    
+    let public_url = req.user?.coverImage
     const cover = await uploadOnCloudinary(path)
     if(!cover?.url){
         throw new ApiError(400,"Error while uploading cover image on cloudinary")
     }
-    const user = await User.findByIdAndUpdate(
+    let user = await User.findByIdAndUpdate(
         id,
         {
             $set : {
@@ -341,10 +330,9 @@ const updateCoverImage = asyncHandler(async (req,res) => {
         {
             new : true
         }
-    ).select(
-        "-password"
     )
-
+    user = await User.findById(req.user?._id).select("-password")
+    await deleteFromCloudinary(public_url)
     return res.status(200).json(
         new ApiResponse(200,{
             user
@@ -412,7 +400,7 @@ const getUserProfile = asyncHandler(async (req,res) => {
                     isSubscribed : 1,
                     avatar : 1,
                     coverImage : 1,
-                    email : 1
+                    // email : 1
                 }
             }
         ]
@@ -431,7 +419,7 @@ const getWatchHistory = asyncHandler(async(req,res) => {
     const user = await User.aggregate([
         {
             $match : {
-                _id : new mongoose.Types.ObjectId(req.user._id)
+                _id : new mongoose.Types.ObjectId(req.user._id) //to make actual mongoose id
             }
         },
         {
